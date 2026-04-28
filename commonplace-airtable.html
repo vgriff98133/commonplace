@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>a commonplace book</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&family=Spectral:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1814;
+    --ink-mid: #3d3a35;
+    --ink-light: #6b6760;
+    --ink-faint: #b0ada8;
+    --paper: #faf8f4;
+    --paper-warm: #f3f0ea;
+    --paper-rule: #e8e4dc;
+    --accent: #7c3d1e;
+    --accent-light: #c4845a;
+    --accent-pale: #f0e0d4;
+    --serif: 'Playfair Display', Georgia, serif;
+    --body: 'Spectral', Georgia, serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.75; min-height: 100vh; }
+
+  /* ── Setup screen ── */
+  .setup-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background: var(--paper);
+  }
+  .setup-card {
+    max-width: 520px;
+    width: 100%;
+    padding: 3rem;
+    border: 1px solid var(--paper-rule);
+    border-left: 4px solid var(--accent);
+  }
+  .setup-card h1 { font-family: var(--serif); font-size: 1.6rem; font-weight: 400; font-style: italic; color: var(--ink); margin-bottom: 0.5rem; }
+  .setup-card p { font-size: 15px; color: var(--ink-light); margin-bottom: 2rem; line-height: 1.6; }
+  .setup-card label { display: block; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-light); margin-bottom: 5px; }
+  .setup-card input { width: 100%; font-family: var(--body); font-size: 15px; padding: 10px 14px; border: 1px solid var(--paper-rule); background: var(--paper); color: var(--ink); outline: none; margin-bottom: 1.25rem; border-radius: 2px; }
+  .setup-card input:focus { border-color: var(--ink-faint); }
+  .setup-note { font-size: 13px; color: var(--ink-faint); font-style: italic; margin-bottom: 1.5rem; line-height: 1.5; }
+  .setup-btn { font-family: var(--body); font-size: 14px; padding: 10px 24px; background: var(--accent); border: none; color: #faf8f4; cursor: pointer; border-radius: 2px; letter-spacing: 0.03em; }
+  .setup-btn:hover { background: #9a4d28; }
+  .setup-error { font-size: 13px; color: #a33; margin-top: 0.75rem; font-style: italic; min-height: 20px; }
+
+  /* ── Main app ── */
+  .app { display: none; }
+  .app.visible { display: block; }
+
+  .site-header {
+    border-bottom: 1px solid var(--paper-rule);
+    padding: 1.75rem 3rem 1.5rem;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 2rem;
+    position: sticky;
+    top: 0;
+    background: var(--paper);
+    z-index: 100;
+  }
+  .site-title { font-family: var(--serif); font-size: 1.5rem; font-weight: 400; letter-spacing: 0.02em; color: var(--ink); }
+  .site-title span { font-style: italic; color: var(--accent); }
+  .header-right { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+  .quote-count { font-size: 13px; color: var(--ink-light); font-style: italic; white-space: nowrap; }
+
+  .btn { font-family: var(--body); font-size: 13px; padding: 6px 16px; border-radius: 2px; cursor: pointer; transition: all 0.15s; letter-spacing: 0.04em; white-space: nowrap; }
+  .btn-outline { background: transparent; border: 1px solid var(--paper-rule); color: var(--ink-mid); }
+  .btn-outline:hover { border-color: var(--ink-faint); background: var(--paper-warm); }
+  .btn-accent { background: var(--accent); border: 1px solid var(--accent); color: #faf8f4; }
+  .btn-accent:hover { background: #9a4d28; }
+  .btn-ghost { background: transparent; border: none; color: var(--ink-light); font-size: 12px; padding: 4px 8px; cursor: pointer; font-family: var(--body); }
+  .btn-ghost:hover { color: var(--ink); }
+
+  .controls {
+    padding: 1rem 3rem;
+    border-bottom: 1px solid var(--paper-rule);
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+    background: var(--paper-warm);
+  }
+  .search-wrap { flex: 1; min-width: 200px; position: relative; }
+  .search-wrap input { width: 100%; font-family: var(--body); font-size: 15px; padding: 8px 14px 8px 36px; border: 1px solid var(--paper-rule); border-radius: 2px; background: var(--paper); color: var(--ink); outline: none; }
+  .search-wrap input:focus { border-color: var(--ink-faint); }
+  .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--ink-faint); font-size: 14px; pointer-events: none; }
+  select { font-family: var(--body); font-size: 14px; padding: 8px 14px; border: 1px solid var(--paper-rule); border-radius: 2px; background: var(--paper); color: var(--ink); outline: none; cursor: pointer; min-width: 140px; }
+  select:focus { border-color: var(--ink-faint); }
+  .random-btn { font-family: var(--body); font-size: 13px; padding: 8px 18px; border: 1px solid var(--paper-rule); border-radius: 2px; background: var(--paper); color: var(--ink-mid); cursor: pointer; letter-spacing: 0.04em; white-space: nowrap; transition: all 0.15s; }
+  .random-btn:hover { background: var(--accent-pale); border-color: var(--accent-light); color: var(--accent); }
+
+  .tags-filter { padding: 0.75rem 3rem; border-bottom: 1px solid var(--paper-rule); display: flex; gap: 6px; flex-wrap: wrap; align-items: center; background: var(--paper-warm); }
+  .tags-label { font-size: 12px; color: var(--ink-faint); letter-spacing: 0.06em; text-transform: uppercase; margin-right: 4px; white-space: nowrap; }
+  .tag-pill { font-size: 12px; padding: 3px 10px; border-radius: 12px; border: 1px solid var(--paper-rule); background: var(--paper); color: var(--ink-mid); cursor: pointer; transition: all 0.12s; white-space: nowrap; font-family: var(--body); }
+  .tag-pill:hover { border-color: var(--accent-light); color: var(--accent); }
+  .tag-pill.active { background: var(--accent); border-color: var(--accent); color: #faf8f4; }
+
+  .quote-grid { padding: 2.5rem 3rem; columns: 2; column-gap: 2rem; max-width: 1400px; }
+
+  .quote-card { break-inside: avoid; margin-bottom: 1.75rem; padding: 1.75rem 2rem; border: 1px solid var(--paper-rule); border-left: 3px solid var(--accent-light); background: var(--paper); position: relative; transition: border-left-color 0.15s; }
+  .quote-card:hover { border-left-color: var(--accent); }
+  .quote-text { font-family: var(--serif); font-size: 1.05rem; font-style: italic; line-height: 1.7; color: var(--ink); margin-bottom: 1rem; }
+  .quote-meta { display: flex; flex-direction: column; gap: 4px; }
+  .quote-author { font-size: 13px; color: var(--accent); letter-spacing: 0.03em; }
+  .quote-source { font-size: 12px; color: var(--ink-light); font-style: italic; }
+  .quote-tags { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px; }
+  .quote-tag { font-size: 11px; padding: 2px 8px; background: var(--paper-warm); color: var(--ink-light); border-radius: 10px; letter-spacing: 0.02em; border: 1px solid var(--paper-rule); }
+
+  .loading-state { text-align: center; padding: 5rem 2rem; color: var(--ink-light); }
+  .loading-state p { font-family: var(--serif); font-style: italic; font-size: 1.1rem; }
+  .loading-dots::after { content: ''; animation: dots 1.5s infinite; }
+  @keyframes dots { 0%{content:'.'} 33%{content:'..'} 66%{content:'...'} }
+
+  .empty-state { text-align: center; padding: 5rem 2rem; color: var(--ink-light); }
+  .empty-state h3 { font-family: var(--serif); font-size: 1.4rem; font-weight: 400; font-style: italic; margin-bottom: 0.75rem; color: var(--ink-mid); }
+  .empty-state p { font-size: 15px; }
+
+  /* ── Spotlight ── */
+  .spotlight { display: none; position: fixed; inset: 0; background: rgba(26,24,20,0.75); z-index: 300; align-items: center; justify-content: center; padding: 2rem; }
+  .spotlight.open { display: flex; }
+  .spotlight-card { background: var(--paper); max-width: 620px; width: 100%; padding: 3rem; border: 1px solid var(--paper-rule); border-left: 4px solid var(--accent); text-align: center; position: relative; }
+  .spotlight-quote { font-family: var(--serif); font-size: 1.35rem; font-style: italic; line-height: 1.65; color: var(--ink); margin-bottom: 1.5rem; }
+  .spotlight-author { font-size: 15px; color: var(--accent); margin-bottom: 4px; }
+  .spotlight-source { font-size: 13px; color: var(--ink-light); font-style: italic; margin-bottom: 1.5rem; }
+  .spotlight-tags { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-bottom: 2rem; }
+  .spotlight-controls { display: flex; gap: 10px; justify-content: center; }
+
+  /* ── Add quote modal ── */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(26,24,20,0.6); z-index: 200; align-items: center; justify-content: center; padding: 2rem; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--paper); border: 1px solid var(--paper-rule); max-width: 680px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 2.5rem; position: relative; }
+  .modal-title { font-family: var(--serif); font-size: 1.4rem; font-weight: 400; margin-bottom: 0.5rem; }
+  .modal-subtitle { font-size: 14px; color: var(--ink-light); margin-bottom: 2rem; font-style: italic; }
+  .modal-close { position: absolute; top: 1.25rem; right: 1.5rem; background: none; border: none; font-size: 22px; color: var(--ink-faint); cursor: pointer; padding: 4px 8px; line-height: 1; }
+  .modal-close:hover { color: var(--ink); }
+  .form-group { margin-bottom: 1.25rem; }
+  .form-group label { display: block; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-light); margin-bottom: 5px; }
+  .form-group textarea, .form-group input[type="text"] { width: 100%; font-family: var(--serif); font-size: 16px; padding: 10px 14px; border: 1px solid var(--paper-rule); border-radius: 2px; background: var(--paper); color: var(--ink); outline: none; resize: vertical; }
+  .form-group textarea:focus, .form-group input[type="text"]:focus { border-color: var(--ink-faint); }
+  .form-group textarea { min-height: 100px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--paper-rule); }
+  .status-bar { font-size: 13px; color: var(--ink-light); font-style: italic; padding: 8px 0; min-height: 28px; }
+  .status-bar.working { color: var(--accent); }
+  .status-bar.success { color: #2d7a3a; }
+  .status-bar.error { color: #a33; }
+
+  /* ── Import modal ── */
+  .import-area { width: 100%; font-family: var(--body); font-size: 13px; padding: 10px 14px; border: 1px solid var(--paper-rule); border-radius: 2px; background: var(--paper); color: var(--ink); outline: none; resize: vertical; min-height: 200px; line-height: 1.6; }
+  .import-area:focus { border-color: var(--ink-faint); }
+  .parse-preview { background: var(--paper-warm); border: 1px solid var(--paper-rule); padding: 1.5rem; margin: 1.5rem 0; display: none; max-height: 400px; overflow-y: auto; }
+  .parse-preview.open { display: block; }
+  .preview-item { padding: 12px 0; border-bottom: 1px solid var(--paper-rule); }
+  .preview-item:last-child { border-bottom: none; }
+  .preview-quote { font-family: var(--serif); font-style: italic; font-size: 15px; color: var(--ink); margin-bottom: 5px; }
+  .preview-meta { font-size: 12px; color: var(--ink-light); margin-bottom: 5px; }
+  .preview-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 6px; }
+  .preview-tag { font-size: 11px; padding: 1px 7px; background: var(--accent-pale); color: var(--accent); border-radius: 8px; }
+  .preview-skip { display: flex; align-items: center; gap: 6px; }
+  .preview-skip label { text-transform: none; font-size: 13px; color: var(--ink-mid); letter-spacing: 0; font-style: normal; margin-bottom: 0; display: inline; }
+
+  @media (max-width: 900px) {
+    .quote-grid { columns: 1; padding: 1.5rem; }
+    .site-header, .controls, .tags-filter { padding-left: 1.5rem; padding-right: 1.5rem; }
+    .form-row { grid-template-columns: 1fr; }
+  }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--paper); }
+  ::-webkit-scrollbar-thumb { background: var(--paper-rule); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ── SETUP SCREEN ── -->
+<div class="setup-screen" id="setupScreen">
+  <div class="setup-card">
+    <h1>a commonplace book</h1>
+    <p>Enter your Airtable personal access token to connect your quote archive. This is stored only in your browser and never shared.</p>
+    <label>Airtable personal access token</label>
+    <input type="password" id="tokenInput" placeholder="pat…" autocomplete="off">
+    <p class="setup-note">Your token is saved locally in this browser. You'll only need to enter it once per device. To get a new token: Airtable → Account → Developer hub → Personal access tokens.</p>
+    <button class="setup-btn" onclick="connectAirtable()">connect →</button>
+    <div class="setup-error" id="setupError"></div>
+  </div>
+</div>
+
+<!-- ── MAIN APP ── -->
+<div class="app" id="app">
+
+  <header class="site-header">
+    <div class="site-title">a <span>commonplace book</span></div>
+    <div class="header-right">
+      <span class="quote-count" id="quoteCount"></span>
+      <button class="btn btn-outline" onclick="openAddModal()">+ add quote</button>
+      <button class="btn btn-accent" onclick="openImportModal()">⇪ import</button>
+      <button class="btn-ghost" onclick="resetToken()" title="Change Airtable connection">⚙</button>
+    </div>
+  </header>
+
+  <div class="controls">
+    <div class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input type="text" id="searchInput" placeholder="Search passages, authors, sources…" oninput="filterQuotes()">
+    </div>
+    <select id="authorFilter" onchange="filterQuotes()">
+      <option value="">all authors</option>
+    </select>
+    <select id="sourceFilter" onchange="filterQuotes()">
+      <option value="">all sources</option>
+    </select>
+    <button class="random-btn" onclick="openSpotlight()">✦ random passage</button>
+  </div>
+
+  <div class="tags-filter" id="tagsFilter">
+    <span class="tags-label">themes</span>
+  </div>
+
+  <div class="quote-grid" id="quoteGrid">
+    <div class="loading-state">
+      <p class="loading-dots">Loading your passages</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── SPOTLIGHT ── -->
+<div class="spotlight" id="spotlight" onclick="closeSpotlight(event)">
+  <div class="spotlight-card">
+    <div class="spotlight-quote" id="spotlightQuote"></div>
+    <div class="spotlight-author" id="spotlightAuthor"></div>
+    <div class="spotlight-source" id="spotlightSource"></div>
+    <div class="spotlight-tags" id="spotlightTags"></div>
+    <div class="spotlight-controls">
+      <button class="btn btn-outline" onclick="openSpotlight()">another</button>
+      <button class="btn btn-outline" onclick="closeSpotlight()">close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── ADD QUOTE MODAL ── -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeAddModal()">×</button>
+    <div class="modal-title">Add a passage</div>
+    <div class="modal-subtitle">Saved directly to your Airtable base</div>
+    <div class="form-group">
+      <label>Passage</label>
+      <textarea id="addQuote" rows="5" placeholder="The text of the passage…"></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Author</label>
+        <input type="text" id="addAuthor" placeholder="Name">
+      </div>
+      <div class="form-group">
+        <label>Source</label>
+        <input type="text" id="addSource" placeholder="Book, essay, film…">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Tags (comma separated)</label>
+      <input type="text" id="addTags" placeholder="writing, memory, grief">
+    </div>
+    <div class="form-group">
+      <button class="btn btn-outline" onclick="aiTagAdd()" id="aiTagBtn" style="font-size:13px;padding:6px 14px;">✦ suggest tags with AI</button>
+      <div class="status-bar" id="addStatus"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeAddModal()">cancel</button>
+      <button class="btn btn-accent" onclick="saveNewQuote()">save to Airtable</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── IMPORT MODAL ── -->
+<div class="modal-overlay" id="importModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeImportModal()">×</button>
+    <div class="modal-title">Import passages</div>
+    <div class="modal-subtitle">Paste raw text — Kindle citations, "quote — author" format, or mixed notes. AI will parse and tag them.</div>
+    <div class="form-group">
+      <textarea class="import-area" id="importText" placeholder="Paste from Apple Notes here…"></textarea>
+    </div>
+    <div class="modal-actions" style="margin-top:0.5rem;border-top:none;padding-top:0;">
+      <button class="btn btn-outline" onclick="closeImportModal()">cancel</button>
+      <button class="btn btn-accent" id="parseBtn" onclick="parseAndPreview()">✦ parse & preview with AI</button>
+    </div>
+    <div class="status-bar" id="importStatus"></div>
+    <div class="parse-preview" id="parsePreview"></div>
+    <div class="modal-actions" id="importConfirmActions" style="display:none;">
+      <button class="btn btn-outline" onclick="resetImport()">start over</button>
+      <button class="btn btn-accent" onclick="confirmImport()">save all to Airtable</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const BASE_ID = 'appAIchBaNt8g76Ym';
+const TABLE_NAME = 'Commonplace';
+const TOKEN_KEY = 'cb_airtable_token';
+const AT_BASE = `https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent(TABLE_NAME)}`;
+
+let allQuotes = [];
+let filteredQuotes = [];
+let activeTagFilter = null;
+let parsedBatch = [];
+let token = '';
+
+function init() {
+  token = localStorage.getItem(TOKEN_KEY) || '';
+  if (token) {
+    showApp();
+    loadQuotes();
+  }
+}
+
+function showApp() {
+  document.getElementById('setupScreen').style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+}
+
+async function connectAirtable() {
+  const t = document.getElementById('tokenInput').value.trim();
+  if (!t) { showSetupError('Please enter your token.'); return; }
+  document.getElementById('setupError').textContent = 'Connecting…';
+  try {
+    const res = await fetch(`${AT_BASE}?maxRecords=1`, {
+      headers: { Authorization: `Bearer ${t}` }
+    });
+    if (!res.ok) throw new Error('Invalid token or base access');
+    token = t;
+    localStorage.setItem(TOKEN_KEY, token);
+    showApp();
+    loadQuotes();
+  } catch(e) {
+    showSetupError('Could not connect. Check your token and make sure it has access to this base.');
+  }
+}
+
+function showSetupError(msg) {
+  document.getElementById('setupError').textContent = msg;
+}
+
+function resetToken() {
+  if (!confirm('Disconnect from Airtable?')) return;
+  localStorage.removeItem(TOKEN_KEY);
+  token = '';
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('setupScreen').style.display = 'flex';
+  document.getElementById('tokenInput').value = '';
+}
+
+async function loadQuotes() {
+  document.getElementById('quoteGrid').innerHTML = '<div class="loading-state"><p class="loading-dots">Loading your passages</p></div>';
+  try {
+    let records = [];
+    let offset = null;
+    do {
+      const url = new URL(AT_BASE);
+      url.searchParams.set('pageSize', '100');
+      if (offset) url.searchParams.set('offset', offset);
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Failed to load');
+      const data = await res.json();
+      records = records.concat(data.records || []);
+      offset = data.offset || null;
+    } while (offset);
+
+    allQuotes = records.map(r => ({
+      id: r.id,
+      quote: r.fields.Quote || '',
+      author: r.fields.Author || '',
+      source: r.fields.Source || '',
+      tags: parseTags(r.fields.Tags || '')
+    })).filter(q => q.quote);
+
+    renderAll();
+  } catch(e) {
+    document.getElementById('quoteGrid').innerHTML = '<div class="empty-state"><h3>Could not load quotes.</h3><p>Check your Airtable connection.</p></div>';
+  }
+}
+
+function parseTags(raw) {
+  if (!raw) return [];
+  return raw.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+}
+
+function getAllTags() {
+  const counts = {};
+  allQuotes.forEach(q => q.tags.forEach(t => { counts[t] = (counts[t]||0)+1; }));
+  return Object.entries(counts).sort((a,b) => b[1]-a[1]).map(e => e[0]);
+}
+
+function getAllAuthors() {
+  return [...new Set(allQuotes.map(q => q.author).filter(Boolean))].sort();
+}
+
+function getAllSources() {
+  return [...new Set(allQuotes.map(q => q.source).filter(Boolean))].sort();
+}
+
+function renderAll() {
+  renderFilters();
+  renderTagsFilter();
+  filterQuotes();
+}
+
+function renderFilters() {
+  const aSelect = document.getElementById('authorFilter');
+  const sSelect = document.getElementById('sourceFilter');
+  const curA = aSelect.value, curS = sSelect.value;
+  aSelect.innerHTML = '<option value="">all authors</option>';
+  getAllAuthors().forEach(a => {
+    const o = document.createElement('option');
+    o.value = a; o.textContent = a;
+    if (a === curA) o.selected = true;
+    aSelect.appendChild(o);
+  });
+  sSelect.innerHTML = '<option value="">all sources</option>';
+  getAllSources().forEach(s => {
+    const o = document.createElement('option');
+    o.value = s;
+    o.textContent = s.length > 45 ? s.slice(0,42)+'…' : s;
+    if (s === curS) o.selected = true;
+    sSelect.appendChild(o);
+  });
+}
+
+function renderTagsFilter() {
+  const wrap = document.getElementById('tagsFilter');
+  const tags = getAllTags();
+  wrap.innerHTML = '<span class="tags-label">themes</span>';
+  if (!tags.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'flex';
+  tags.forEach(t => {
+    const btn = document.createElement('button');
+    btn.className = 'tag-pill' + (activeTagFilter === t ? ' active' : '');
+    btn.textContent = t;
+    btn.onclick = () => { activeTagFilter = activeTagFilter === t ? null : t; renderTagsFilter(); filterQuotes(); };
+    wrap.appendChild(btn);
+  });
+}
+
+function filterQuotes() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const author = document.getElementById('authorFilter').value;
+  const source = document.getElementById('sourceFilter').value;
+  filteredQuotes = allQuotes.filter(q => {
+    if (author && q.author !== author) return false;
+    if (source && q.source !== source) return false;
+    if (activeTagFilter && !q.tags.includes(activeTagFilter)) return false;
+    if (search) {
+      const hay = [q.quote, q.author, q.source, ...q.tags].join(' ').toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+  const total = allQuotes.length;
+  const shown = filteredQuotes.length;
+  document.getElementById('quoteCount').textContent = total === shown
+    ? `${total} passage${total !== 1 ? 's' : ''}`
+    : `${shown} of ${total} passages`;
+  renderGrid();
+}
+
+function renderGrid() {
+  const grid = document.getElementById('quoteGrid');
+  if (!filteredQuotes.length) {
+    grid.innerHTML = '<div class="empty-state"><h3>No passages found.</h3><p>Try a different search or filter.</p></div>';
+    return;
+  }
+  grid.innerHTML = filteredQuotes.map(q => quoteCard(q)).join('');
+}
+
+function quoteCard(q) {
+  const tags = q.tags.map(t => `<span class="quote-tag">${esc(t)}</span>`).join('');
+  return `<div class="quote-card">
+    <div class="quote-text">${esc(q.quote)}</div>
+    <div class="quote-meta">
+      ${q.author ? `<div class="quote-author">— ${esc(q.author)}</div>` : ''}
+      ${q.source ? `<div class="quote-source">${esc(q.source)}</div>` : ''}
+    </div>
+    ${tags ? `<div class="quote-tags">${tags}</div>` : ''}
+  </div>`;
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── SPOTLIGHT ──
+function openSpotlight() {
+  if (!allQuotes.length) return;
+  const pool = filteredQuotes.length ? filteredQuotes : allQuotes;
+  const q = pool[Math.floor(Math.random() * pool.length)];
+  document.getElementById('spotlightQuote').textContent = q.quote;
+  document.getElementById('spotlightAuthor').textContent = q.author ? '— ' + q.author : '';
+  document.getElementById('spotlightSource').textContent = q.source || '';
+  document.getElementById('spotlightTags').innerHTML = q.tags.map(t => `<span class="quote-tag">${esc(t)}</span>`).join('');
+  document.getElementById('spotlight').classList.add('open');
+}
+function closeSpotlight(e) {
+  if (!e || e.target.id === 'spotlight') document.getElementById('spotlight').classList.remove('open');
+}
+
+// ── ADD QUOTE ──
+function openAddModal() {
+  ['addQuote','addAuthor','addSource','addTags'].forEach(id => document.getElementById(id).value = '');
+  setStatus('addStatus','','');
+  document.getElementById('addModal').classList.add('open');
+}
+function closeAddModal() { document.getElementById('addModal').classList.remove('open'); }
+
+async function aiTagAdd() {
+  const quote = document.getElementById('addQuote').value.trim();
+  const author = document.getElementById('addAuthor').value.trim();
+  if (!quote) { setStatus('addStatus','Please enter a passage first.','error'); return; }
+  setStatus('addStatus','✦ suggesting themes…','working');
+  document.getElementById('aiTagBtn').disabled = true;
+  try {
+    const tags = await aiSuggestTags(quote, author, getAllTags());
+    document.getElementById('addTags').value = tags.join(', ');
+    setStatus('addStatus','Tags suggested — edit as needed.','success');
+  } catch(e) {
+    setStatus('addStatus','Could not reach AI. Add tags manually.','error');
+  }
+  document.getElementById('aiTagBtn').disabled = false;
+}
+
+async function saveNewQuote() {
+  const quote = document.getElementById('addQuote').value.trim();
+  if (!quote) { setStatus('addStatus','Please enter a passage.','error'); return; }
+  setStatus('addStatus','Saving…','working');
+  try {
+    await airtableCreate([{
+      Quote: quote,
+      Author: document.getElementById('addAuthor').value.trim(),
+      Source: document.getElementById('addSource').value.trim(),
+      Tags: document.getElementById('addTags').value.trim()
+    }]);
+    setStatus('addStatus','Saved!','success');
+    setTimeout(() => { closeAddModal(); loadQuotes(); }, 800);
+  } catch(e) {
+    setStatus('addStatus','Could not save. Check your Airtable connection.','error');
+  }
+}
+
+// ── IMPORT ──
+function openImportModal() {
+  document.getElementById('importText').value = '';
+  document.getElementById('importStatus').textContent = '';
+  document.getElementById('parsePreview').classList.remove('open');
+  document.getElementById('parsePreview').innerHTML = '';
+  document.getElementById('importConfirmActions').style.display = 'none';
+  document.getElementById('parseBtn').style.display = 'inline-block';
+  document.getElementById('parseBtn').disabled = false;
+  parsedBatch = [];
+  document.getElementById('importModal').classList.add('open');
+}
+function closeImportModal() { document.getElementById('importModal').classList.remove('open'); }
+function resetImport() { openImportModal(); }
+
+async function parseAndPreview() {
+  const text = document.getElementById('importText').value.trim();
+  if (!text) { setStatus('importStatus','Please paste some text first.','error'); return; }
+  setStatus('importStatus','✦ parsing your passages…','working');
+  document.getElementById('parseBtn').disabled = true;
+  try {
+    parsedBatch = await aiParseQuotes(text, getAllTags());
+    if (!parsedBatch.length) {
+      setStatus('importStatus','No passages found. Try a different format.','error');
+      document.getElementById('parseBtn').disabled = false;
+      return;
+    }
+    setStatus('importStatus',`Found ${parsedBatch.length} passage${parsedBatch.length!==1?'s':''}. Review below.`,'success');
+    renderPreview();
+    document.getElementById('parsePreview').classList.add('open');
+    document.getElementById('importConfirmActions').style.display = 'flex';
+    document.getElementById('parseBtn').style.display = 'none';
+  } catch(e) {
+    setStatus('importStatus','AI parsing failed: ' + e.message,'error');
+    document.getElementById('parseBtn').disabled = false;
+  }
+}
+
+function renderPreview() {
+  document.getElementById('parsePreview').innerHTML = parsedBatch.map((q,i) => `
+    <div class="preview-item">
+      <div class="preview-quote">"${esc(q.quote)}"</div>
+      <div class="preview-meta">${q.author?'— '+esc(q.author):''}${q.source?' · '+esc(q.source):''}</div>
+      <div class="preview-tags">${(q.tags||[]).map(t=>`<span class="preview-tag">${esc(t)}</span>`).join('')}</div>
+      <div class="preview-skip">
+        <input type="checkbox" id="skip-${i}" onchange="parsedBatch[${i}]._skip=this.checked">
+        <label for="skip-${i}">skip this passage</label>
+      </div>
+    </div>`).join('');
+}
+
+async function confirmImport() {
+  const toAdd = parsedBatch.filter(q => !q._skip);
+  if (!toAdd.length) { setStatus('importStatus','Nothing to save — uncheck some passages.','error'); return; }
+  setStatus('importStatus',`Saving ${toAdd.length} passages to Airtable…`,'working');
+  document.getElementById('importConfirmActions').style.display = 'none';
+  try {
+    const chunks = [];
+    for (let i = 0; i < toAdd.length; i += 10) chunks.push(toAdd.slice(i, i+10));
+    for (const chunk of chunks) {
+      await airtableCreate(chunk.map(q => ({
+        Quote: q.quote,
+        Author: q.author || '',
+        Source: q.source || '',
+        Tags: (q.tags||[]).join(', ')
+      })));
+    }
+    setStatus('importStatus',`${toAdd.length} passages saved!`,'success');
+    setTimeout(() => { closeImportModal(); loadQuotes(); }, 1000);
+  } catch(e) {
+    setStatus('importStatus','Save failed. Check your connection.','error');
+    document.getElementById('importConfirmActions').style.display = 'flex';
+  }
+}
+
+// ── AIRTABLE API ──
+async function airtableCreate(records) {
+  const res = await fetch(AT_BASE, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ records: records.map(f => ({ fields: f })) })
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error?.message || 'Airtable error');
+  }
+  return res.json();
+}
+
+// ── ANTHROPIC AI ──
+async function aiSuggestTags(quote, author, existingTags) {
+  const prompt = `Suggest 3-5 thematic tags for this passage from a literary commonplace book.
+
+Passage: "${quote}"
+${author ? `Author: ${author}` : ''}
+${existingTags.length ? `Existing tags to reuse if relevant: ${existingTags.slice(0,30).join(', ')}` : ''}
+
+Return ONLY a JSON array of lowercase strings. Example: ["writing","memory","grief"]`;
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 200, messages: [{ role: 'user', content: prompt }] })
+  });
+  const data = await res.json();
+  return JSON.parse(data.content[0].text.replace(/```json|```/g,'').trim());
+}
+
+async function aiParseQuotes(rawText, existingTags) {
+  const prompt = `Parse this commonplace book text and extract individual passages/quotes.
+
+For each passage return:
+- quote: the passage text (clean up, remove page numbers from inline text)
+- author: author name if present
+- source: book/article/film title if present (use short title only, not full Kindle title)
+- tags: 3-5 lowercase thematic tags
+
+${existingTags.length ? `Existing tags to reuse where relevant: ${existingTags.slice(0,40).join(', ')}` : ''}
+
+Skip: poems (unless a single memorable line), numbered lists, article summaries, personal notes/observations by the reader, URLs, duplicate passages.
+
+Text:
+---
+${rawText.slice(0,8000)}
+---
+
+Return ONLY valid JSON array. No markdown, no explanation:
+[{"quote":"...","author":"...","source":"...","tags":["tag1","tag2"]}]`;
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 4000, messages: [{ role: 'user', content: prompt }] })
+  });
+  if (!res.ok) throw new Error('API request failed');
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  const text = data.content[0].text.replace(/```json|```/g,'').trim();
+  return JSON.parse(text);
+}
+
+function setStatus(id, msg, type) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = 'status-bar' + (type ? ' ' + type : '');
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closeAddModal(); closeImportModal();
+    document.getElementById('spotlight').classList.remove('open');
+  }
+});
+
+init();
+</script>
+</body>
+</html>
