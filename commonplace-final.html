@@ -269,32 +269,101 @@
   }
   select:focus { border-color: var(--accent-light); }
 
-  .random-btn {
+  .surprise-bar {
+    background: var(--paper-warm);
+    border-bottom: 1px solid var(--paper-rule);
+    padding: 10px 3.5rem;
+  }
+
+  .surprise-btn {
     font-family: var(--serif);
     font-style: italic;
-    font-size: 14px;
-    padding: 8px 20px;
+    font-size: 15px;
+    letter-spacing: 0.08em;
+    padding: 10px 0;
+    background: var(--accent);
+    color: var(--paper);
+    border: none;
+    cursor: pointer;
+    width: 100%;
+    transition: background var(--transition);
+  }
+  .surprise-btn:hover { background: var(--accent-mid); }
+
+  .tags-popular {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--paper-rule);
+    margin-bottom: 8px;
+  }
+
+  .tags-alpha-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: flex-start;
+  }
+
+  .alpha-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .alpha-btn {
+    font-family: var(--body);
+    font-size: 11px;
+    padding: 2px 7px;
     border: 1px solid var(--paper-rule);
     background: var(--paper);
-    color: var(--ink-mid);
+    color: var(--ink-faint);
     cursor: pointer;
-    white-space: nowrap;
+    letter-spacing: 0.05em;
+    border-radius: 4px;
     transition: all var(--transition);
   }
-  .random-btn:hover {
-    background: var(--accent-pale);
-    border-color: var(--accent-light);
-    color: var(--accent);
+  .alpha-btn.has-tags { color: var(--ink-light); }
+  .alpha-btn.has-tags:hover { border-color: var(--accent-light); color: var(--accent); background: var(--accent-pale); }
+  .alpha-btn.active { background: var(--accent-pale); border-color: var(--accent-light); color: var(--accent); }
+  .alpha-btn.disabled { opacity: 0.3; cursor: default; }
+
+  .expanded-tags {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    padding: 8px 12px;
+    background: var(--paper);
+    border: 1px solid var(--paper-rule);
+    margin-top: 4px;
   }
+
+  .load-more-wrap {
+    text-align: center;
+    padding: 2rem 3.5rem;
+  }
+
+  .load-more-btn {
+    font-family: var(--body);
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    padding: 10px 32px;
+    background: transparent;
+    border: 1px solid var(--paper-rule);
+    color: var(--ink-mid);
+    cursor: pointer;
+    transition: all var(--transition);
+  }
+  .load-more-btn:hover { border-color: var(--ink-faint); background: var(--paper-warm); }
 
   /* ── Tags ── */
   .tags-bar {
-    padding: 0.65rem 3.5rem;
+    padding: 0.75rem 3.5rem;
     border-bottom: 1px solid var(--paper-rule);
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    align-items: center;
     background: var(--paper-warm);
   }
 
@@ -674,7 +743,7 @@
   /* ── Responsive ── */
   @media (max-width: 960px) {
     .quote-grid { columns: 1; padding: 1.5rem; }
-    .site-header, .controls, .tags-bar { padding-left: 1.5rem; padding-right: 1.5rem; }
+    .site-header, .controls, .tags-bar, .surprise-bar, .load-more-wrap { padding-left: 1.5rem; padding-right: 1.5rem; }
     .modal { padding: 2rem 1.75rem; }
     .form-row { grid-template-columns: 1fr; }
   }
@@ -731,11 +800,21 @@
     <select id="sourceFilter" onchange="filterQuotes()">
       <option value="">all sources</option>
     </select>
-    <button class="random-btn" onclick="openSpotlight()">✦ open at random</button>
+  </div>
+
+  <div class="surprise-bar">
+    <button class="surprise-btn" onclick="openSpotlight()">✦ surprise me ✦</button>
   </div>
 
   <div class="tags-bar" id="tagsBar">
-    <span class="tags-label">themes</span>
+    <div class="tags-popular" id="tagsPopular">
+      <span class="tags-label">popular</span>
+    </div>
+    <div class="tags-alpha-wrap">
+      <span class="tags-label">all themes</span>
+      <div class="alpha-row" id="alphaRow"></div>
+      <div class="expanded-tags" id="expandedTags" style="display:none;"></div>
+    </div>
   </div>
 
   <div class="quote-grid" id="quoteGrid">
@@ -830,9 +909,13 @@
 
   let allQuotes = [];
   let filteredQuotes = [];
+  let displayedCount = 0;
+  const PAGE_SIZE = 20;
   let activeTag = null;
   let parsedBatch = [];
   let token = '';
+  let airtableOffset = null;
+  let loadingMore = false;
 
   function init() {
     const stored = localStorage.getItem(TOKEN_KEY);
@@ -886,31 +969,55 @@
 
   async function loadQuotes() {
     document.getElementById('quoteGrid').innerHTML = '<div class="loading-state"><p class="loading-dots">Loading your passages</p></div>';
-    try {
-      let records = [], offset = null;
-      do {
-        const url = new URL(AT_URL);
-        url.searchParams.set('pageSize', '100');
-        if (offset) url.searchParams.set('offset', offset);
-        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        records = records.concat(data.records || []);
-        offset = data.offset || null;
-      } while (offset);
+    allQuotes = [];
+    airtableOffset = null;
+    displayedCount = 0;
+    await fetchNextBatch();
+    renderAll();
+  }
 
-      allQuotes = records.map(r => ({
-        id: r.id,
-        quote: r.fields.Quote || '',
-        author: r.fields.Author || '',
-        source: r.fields.Source || '',
-        tags: parseTags(r.fields.Tags || '')
-      })).filter(q => q.quote.trim());
+  async function fetchNextBatch() {
+    const url = new URL(AT_URL);
+    url.searchParams.set('pageSize', '100');
+    if (airtableOffset) url.searchParams.set('offset', airtableOffset);
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    const newRecords = (data.records || []).map(r => ({
+      id: r.id,
+      quote: r.fields.Quote || '',
+      author: r.fields.Author || '',
+      source: r.fields.Source || '',
+      tags: parseTags(r.fields.Tags || '')
+    })).filter(q => q.quote.trim());
+    // Shuffle the new batch before adding
+    newRecords.sort(() => Math.random() - 0.5);
+    allQuotes = allQuotes.concat(newRecords);
+    airtableOffset = data.offset || null;
+  }
 
-      renderAll();
-    } catch {
-      document.getElementById('quoteGrid').innerHTML = '<div class="empty-state"><h3>Could not load quotes.</h3><p>Check your Airtable connection.</p></div>';
+  async function loadMore() {
+    if (loadingMore) return;
+    loadingMore = true;
+    const btn = document.getElementById('loadMoreBtn');
+    if (btn) btn.textContent = 'Loading…';
+
+    // If we've displayed all loaded quotes and there are more in Airtable, fetch next batch
+    if (displayedCount >= allQuotes.length && airtableOffset) {
+      try {
+        await fetchNextBatch();
+        renderFilters();
+        renderTagsBar();
+      } catch {
+        if (btn) btn.textContent = 'load more passages';
+        loadingMore = false;
+        return;
+      }
     }
+
+    displayedCount = Math.min(displayedCount + PAGE_SIZE, filteredQuotes.length);
+    renderGrid();
+    loadingMore = false;
   }
 
   function parseTags(raw) {
@@ -961,19 +1068,58 @@
   }
 
   function renderTagsBar() {
-    const bar = document.getElementById('tagsBar');
     const tags = getAllTags();
-    bar.innerHTML = '<span class="tags-label">themes</span>';
-    if (!tags.length) { bar.style.display = 'none'; return; }
-    bar.style.display = 'flex';
-    const active = activeTag && tags.includes(activeTag) ? [activeTag] : [];
-    const rest = tags.filter(t => t !== activeTag).sort(() => Math.random() - 0.5).slice(0, 20 - active.length);
-    [...active, ...rest].forEach(t => {
+    if (!tags.length) { document.getElementById('tagsBar').style.display = 'none'; return; }
+    document.getElementById('tagsBar').style.display = 'block';
+
+    // Popular: top 20 by frequency, always include active tag
+    const popularEl = document.getElementById('tagsPopular');
+    popularEl.innerHTML = '<span class="tags-label">popular</span>';
+    const top20 = tags.slice(0, 20);
+    if (activeTag && !top20.includes(activeTag)) top20[top20.length - 1] = activeTag;
+    top20.forEach(t => {
       const btn = document.createElement('button');
       btn.className = 'tag-pill' + (activeTag === t ? ' active' : '');
       btn.textContent = t;
       btn.onclick = () => { activeTag = activeTag === t ? null : t; renderTagsBar(); filterQuotes(); };
-      bar.appendChild(btn);
+      popularEl.appendChild(btn);
+    });
+
+    // Alphabet: build letter buttons
+    const alphaRow = document.getElementById('alphaRow');
+    const expandedTags = document.getElementById('expandedTags');
+    const byLetter = {};
+    tags.forEach(t => {
+      const letter = t[0].toUpperCase();
+      if (!byLetter[letter]) byLetter[letter] = [];
+      byLetter[letter].push(t);
+    });
+
+    alphaRow.innerHTML = '';
+    let activeLetter = null;
+
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(letter => {
+      const btn = document.createElement('button');
+      const hasTags = !!byLetter[letter];
+      btn.className = 'alpha-btn' + (hasTags ? ' has-tags' : ' disabled');
+      btn.textContent = letter;
+      btn.onclick = () => {
+        if (!hasTags) return;
+        if (activeLetter === letter) {
+          activeLetter = null;
+          expandedTags.style.display = 'none';
+          btn.classList.remove('active');
+          return;
+        }
+        alphaRow.querySelectorAll('.alpha-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeLetter = letter;
+        expandedTags.style.display = 'flex';
+        expandedTags.innerHTML = byLetter[letter].map(t =>
+          `<button class="tag-pill${activeTag === t ? ' active' : ''}" style="font-size:11px;" onclick="activeTag=activeTag==='${t}'?null:'${t}';renderTagsBar();filterQuotes();">${t}</button>`
+        ).join('');
+      };
+      alphaRow.appendChild(btn);
     });
   }
 
@@ -993,11 +1139,7 @@
       return true;
     });
 
-    const total = allQuotes.length, shown = filteredQuotes.length;
-    document.getElementById('quoteCount').textContent = total === shown
-      ? `${total} passage${total !== 1 ? 's' : ''}`
-      : `${shown} of ${total}`;
-
+    displayedCount = Math.min(PAGE_SIZE, filteredQuotes.length);
     renderGrid();
   }
 
@@ -1005,9 +1147,39 @@
     const grid = document.getElementById('quoteGrid');
     if (!filteredQuotes.length) {
       grid.innerHTML = '<div class="empty-state"><h3>No passages found.</h3><p>Try a different search or filter.</p></div>';
+      // Remove load more if present
+      const lm = document.getElementById('loadMoreWrap');
+      if (lm) lm.remove();
       return;
     }
-    grid.innerHTML = filteredQuotes.map(q => quoteCard(q)).join('');
+
+    const visible = filteredQuotes.slice(0, displayedCount);
+    grid.innerHTML = visible.map(q => quoteCard(q)).join('');
+
+    // Count label
+    const hasMore = displayedCount < filteredQuotes.length || airtableOffset;
+    const total = allQuotes.length;
+    const shown = filteredQuotes.length;
+    const label = total === shown
+      ? `showing ${displayedCount} of ${total} passage${total !== 1 ? 's' : ''}`
+      : `showing ${displayedCount} of ${shown} matching passages`;
+    document.getElementById('quoteCount').textContent = label;
+
+    // Load more button
+    let lm = document.getElementById('loadMoreWrap');
+    if (hasMore) {
+      if (!lm) {
+        lm = document.createElement('div');
+        lm.id = 'loadMoreWrap';
+        lm.className = 'load-more-wrap';
+        lm.innerHTML = '<button id="loadMoreBtn" class="load-more-btn" onclick="loadMore()">load more passages</button>';
+        grid.parentNode.insertBefore(lm, grid.nextSibling);
+      } else {
+        document.getElementById('loadMoreBtn').textContent = 'load more passages';
+      }
+    } else if (lm) {
+      lm.remove();
+    }
   }
 
   function quoteCard(q) {
