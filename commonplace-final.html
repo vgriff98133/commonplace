@@ -712,9 +712,11 @@
       <span class="quote-count" id="quoteCount"></span>
     </div>
     <div class="header-right">
-      <button class="btn btn-ghost" onclick="openAddModal()">+ add quote</button>
-      <button class="btn btn-primary" onclick="openImportModal()">⇪ import</button>
-      <button class="btn-icon" onclick="resetToken()" title="Change connection">⚙</button>
+      <div id="ownerButtons" style="display:none;align-items:center;gap:0.75rem;">
+        <button class="btn btn-ghost" onclick="openAddModal()">+ add quote</button>
+        <button class="btn btn-primary" onclick="openImportModal()">⇪ import</button>
+      </div>
+      <button class="btn-icon" onclick="resetToken()" title="Owner login">⚙</button>
     </div>
   </header>
 
@@ -824,6 +826,11 @@
   const WORKER_URL = 'https://commonplace-proxy.victoria-griffith.workers.dev';
   const AT_URL = `https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent(TABLE)}`;
   const TOKEN_KEY = 'cb_at_token_v2';
+  // ── PASTE YOUR READ-ONLY AIRTABLE TOKEN BELOW ──────────────────
+  // This token has read-only access and is safe to include in this file.
+  // Get it from: Airtable → Account → Developer hub → Personal access tokens
+  const PUBLIC_READ_TOKEN = 'PASTE_YOUR_READ_ONLY_TOKEN_HERE';
+  // ───────────────────────────────────────────────────────────────
 
   let allQuotes = [];
   let filteredQuotes = [];
@@ -832,8 +839,15 @@
   let token = '';
 
   function init() {
-    token = localStorage.getItem(TOKEN_KEY) || '';
-    if (token) { showApp(); loadQuotes(); }
+    const stored = localStorage.getItem(TOKEN_KEY);
+    token = stored || PUBLIC_READ_TOKEN;
+    if (token && token !== 'PASTE_YOUR_READ_ONLY_TOKEN_HERE') {
+      showApp();
+      if (stored) document.getElementById('ownerButtons').style.display = 'flex';
+      loadQuotes();
+    } else {
+      document.getElementById('setupScreen').style.display = 'flex';
+    }
   }
 
   function showApp() {
@@ -860,12 +874,22 @@
   function showSetupError(msg) { document.getElementById('setupError').textContent = msg; }
 
   function resetToken() {
-    if (!confirm('Disconnect from Airtable?')) return;
-    localStorage.removeItem(TOKEN_KEY);
-    token = '';
-    document.getElementById('app').classList.remove('visible');
-    document.getElementById('setupScreen').style.display = 'flex';
-    document.getElementById('tokenInput').value = '';
+    const stored = localStorage.getItem(TOKEN_KEY);
+    if (stored) {
+      // Already in owner mode — offer to sign out
+      if (!confirm('Sign out of owner mode?')) return;
+      localStorage.removeItem(TOKEN_KEY);
+      token = PUBLIC_READ_TOKEN;
+      // Hide add/import buttons
+      document.getElementById('ownerButtons').style.display = 'none';
+    } else {
+      // Enter owner mode
+      const t = prompt('Enter your Airtable write token to enable adding and importing quotes:');
+      if (!t) return;
+      localStorage.setItem(TOKEN_KEY, t);
+      token = t;
+      document.getElementById('ownerButtons').style.display = 'flex';
+    }
   }
 
   async function loadQuotes() {
