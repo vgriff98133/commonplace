@@ -829,7 +829,7 @@
   // ── PASTE YOUR READ-ONLY AIRTABLE TOKEN BELOW ──────────────────
   // This token has read-only access and is safe to include in this file.
   // Get it from: Airtable → Account → Developer hub → Personal access tokens
-  const PUBLIC_READ_TOKEN = 'PASTE_YOUR_READ_ONLY_TOKEN_HERE';
+  const PUBLIC_READ_TOKEN = 'patXTW3ynmwM5arfi.1a513b0006b0155f910c6c877a405809ae5dd3514d5da103c35cb48a300c79e2';
   // ───────────────────────────────────────────────────────────────
 
   let allQuotes = [];
@@ -841,7 +841,7 @@
   function init() {
     const stored = localStorage.getItem(TOKEN_KEY);
     token = stored || PUBLIC_READ_TOKEN;
-    if (token && token !== 'PASTE_YOUR_READ_ONLY_TOKEN_HERE') {
+    if (token && token !== 'patXTW3ynmwM5arfi.1a513b0006b0155f910c6c877a405809ae5dd3514d5da103c35cb48a300c79e2') {
       showApp();
       if (stored) document.getElementById('ownerButtons').style.display = 'flex';
       loadQuotes();
